@@ -1,0 +1,12 @@
+# mysql://avnadmin:AVNS_Mki2yuzEB_g-kgBJELi@geto-shulgastanslv-db73.l.aivencloud.com:13086/geto
+[database]
+host = "mysql://avnadmin"
+port = 13086
+database_name = "geto"
+user = "@geto-shulgastanslv-db73.l.aivencloud.com"
+password = "AVNS_Mki2yuzEB_g-kgBJELi"
+
+# 1618303438 - admin, 705465130 - main account
+[telegram]
+token = "7250956844:AAEiqsOMo_MjO8ZhfB-jvvIc-XeXrm773kU"
+members = ['1618303438', '705465130']
