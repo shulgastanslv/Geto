@@ -74,7 +74,7 @@ class ActionNode(BehaviorTreeNode):
 
 class BehaviorTree:
     def __init__(self) -> None:
-        self.state_manager = state_manager
+        self.state_manager = StateManager()
         self.root: Optional[BehaviorTreeNode] = None
         self.nodes: List[BehaviorTreeNode] = []
 

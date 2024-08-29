@@ -1,7 +1,8 @@
 import asyncio
 from datetime import datetime
 import random
-from aiogram import Router
+from typing import List, Optional
+from aiogram import Bot, Router
 from aiogram.types import Message
 from injector import inject, provider, singleton
 from common.behavior_tree import BehaviorTree
@@ -18,49 +19,89 @@ class UsersCommandHandler:
         self.behaviorTree = behaviorTree
         self.userRepository = userRepository
         
-    def __check_introductory_message(self, message_text) -> bool:
-       return message_text is not None
+    def __message_is_not_null(self, message) -> bool:
+       return message is not None
    
     async def __good_morning(self, message : Message) -> bool:
-        emojies = ["💞", "❤️", "🤍", "🖤", "💗", "💓", "❣", "❤️‍🔥"]
-        number_of_emojies = random.randint(3, 4)
+        emojies = ["💞", "❤️", "🤍", "🖤"]
+        number_of_emojies = random.randint(1, 3)
         random_emojies = ''.join(random.choices(emojies, k=number_of_emojies))
         nicknames = ["солнышко", "котенок", "буська", "котик", "жопка", "госпожа", "вредина", "прекрасная морда", "дорогая", "милая", "самая лучшая женщина в мире", 
                     "солнце", "котеночек", "пупс"]
         random_nickname = random.choice(nicknames)
-        morning_greetings = ["Доброе утро, ", 
-                            "С добрым утром, ", 
-                            "Доброе утроо, ", 
-                            "Утречко доброе, "]
+        morning_greetings = ["доброе утро, ", 
+                            "доброе утрооо, ", 
+                            "дооброе утроо, ", 
+                            "утречко доброе, "]
         final_morning_message = f"{random.choice(morning_greetings)} {random_nickname} {random_emojies}"
         await message.answer(final_morning_message)
         return True
    
-    async def __ask_how_is_your_mood(self, message : Message) -> bool:
-        questions = ["как настроение котенок?", "как настроение, морда?", "как настроение?", "как настроение, жопка?"]
-        await message.answer(random.choice(questions))
-        return True
-        
-    async def __ask_introductory_question(self, message : Message) -> bool:
-        questions = ["ну что ты котенок?", "ну что ты ?", "мм?", "вредничаешь там?", "чем занимаешься?"]
-        await message.answer(random.choice(questions))
+    async def __send_message(self, message : Message, text, messages : Optional[List] = None):
+        if messages is not None:
+            await message.answer(random.choice(messages))
+        else:
+            await message.answer(text)
         return True
     
-    async def first_message(self, message : Message):
+    async def __send_sticker(self, message : Message, sticker, stickers : Optional[List] = None):
+        if stickers is not None:
+            await message.answer_sticker(random.choice(stickers))
+        else:
+            await message.answer_sticker(sticker)
+        return True
+    
+    async def good_morning(self, message : Message):
+        
+        condition_node = self.behaviorTree.add_condition(lambda: self.__message_is_not_null(message))
+        message_text = message.text
+        morning = self.behaviorTree.add_action(lambda: self.__good_morning(message_text))
+        moods = ["как настроение котенок?", "как настроение, морда?", "как настроение?", "как настроение, жопка?"]
+        introductory_questions = ["ну что ты котенок?", "ну что ты ?", "вредничаешь там?"]
+        introductory = self.behaviorTree.add_action(random.choice([lambda: self.__send_message(message, "ну как ты там?", introductory_questions),
+                                          lambda: self.__send_message(message, "как твое настроение?", moods)]))
+        morning_sequence_node = self.behaviorTree.add_sequence([condition_node, 
+                                                            morning, 
+                                                            introductory])
+        self.behaviorTree.update(morning_sequence_node)
+        await self.behaviorTree.run()
+        
+    async def random_behavior(self, message : Message):
         
         message_text = message.text
-        condition_node = self.behaviorTree.add_condition(lambda: self.__check_introductory_message(message_text))
+        condition_node = self.behaviorTree.add_condition(lambda: self.__message_is_not_null(message_text))
+        nicknames = ["солнышко", "котенок", "буська", "котик", "жопка", "госпожа", "вредина", "прекрасная морда", "дорогая", "милая", "самая лучшая женщина в мире", 
+                    "солнце", "котеночек", "пупс"]
+        random_nickname = random.choice(nicknames)
+        first_message_questions = ["хочешь поговорить, ", "ну что ты, ", "как ты там, ", "я тут, ", "скучаешь там, ", "ну чтоо ты, "]
         
-        current_hour = datetime.now().hour
-        morning = self.behaviorTree.add_action(lambda: self.__good_morning(message))
-        mood = self.behaviorTree.add_action(lambda: self.__ask_how_is_your_mood(message))
-        introductory = self.behaviorTree.add_action(lambda: self.__ask_introductory_question(message))
-        sequence_node = self.behaviorTree.add_sequence([condition_node, 
-                                                            morning, 
-                                                            introductory, 
-                                                            mood])
-        self.behaviorTree.update(sequence_node)
+        first_message_ramdom_sticker = [
+            'CAACAgIAAxkBAAEH7qRmyFo8FUWljxFcnpFw_IKXeWMNdgACChoAAojy0EtnWpcq_Ye04TUE',
+            'CAACAgIAAxkBAAEH7p1myForICfvo5q5J4tqimgLxciOhQACjhYAAvcayUvqMHys4N1qTDUE',
+            'CAACAgIAAxkBAAEH7pVmyFobEwf8gDUNh-BP_V7WT3AKyQACpBwAAp6NSUrsxt4FJ3d2eDUE',
+            'CAACAgIAAxkBAAEH7pFmyFoVxQLtrUTAhu-yPd4IJzvzAwACjhwAAklRSUq8mKapt5umCzUE',
+            'CAACAgIAAxkBAAEH7o1myFoQmtnU7qVIRLtcFg8BVPTLeQACriMAApGnQEq7EH8rWyMSOjUE',
+            'CAACAgIAAxkBAAEIEO9mz3022xILcVbrFCeHVG5UTrtalQACfxMAAkfO2UuxS5hlg2Vr4zUE',
+            'CAACAgIAAxkBAAEIEPFmz30-EhyIyEBM9Dx1lXU85XAbrAACNBIAAhPX2EsAAbFTK7Zm0XQ1BA',
+            'CAACAgIAAxkBAAEIEPNmz31F0nrD227SaFcyQbwnUMZDcQACFxQAAlXX2Es_ehiLlrWrKDUE',
+            'CAACAgIAAxkBAAEIEPVmz31O09B7kByzRUT7sEp0t0GgPgACxhMAAtGkSUjUeWvO3nGgcjUE',
+            'CAACAgIAAxkBAAEIEPdmz31XUGbtZBuca_2Emxg7qaVrwAACkBUAArTlyUvP28AHDr-D6TUE',
+            'CAACAgIAAxkBAAEIEP1mz31k5IQKFTdCjDttAAErfxoS4nUAAjgUAALRTMhLzAQ6pNA-xiA1BA'
+        ]
+        final_first_message = f"{random.choice(first_message_questions)} {random_nickname} ?"
+        
+        actions = [
+        lambda: self.__send_message(message, final_first_message), 
+        lambda: self.__send_message(message, "ты мой пупс, как ты там?"),
+        lambda: self.__send_sticker(message, random.choice(first_message_ramdom_sticker))]
+        
+        first_message = self.behaviorTree.add_action(random.choice(actions))
+        random_behavior_sequence_node = self.behaviorTree.add_sequence([condition_node, 
+                                                            first_message])
+        self.behaviorTree.update(random_behavior_sequence_node)
         await self.behaviorTree.run()
+        
+        
         
 
 

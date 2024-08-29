@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import random
 import sys
 from common.behavior_tree import BehaviorTree
 from handlers import router
@@ -14,6 +15,9 @@ from handlers.users import UsersCommandHandler
 from repositories.user_repository import UserRepository
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
+from filters.good_morning import GoodMorningFilter
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 class ServiceCollection(Module):
     
     def configure(self, binder):
@@ -38,21 +42,42 @@ class ServiceCollection(Module):
         return UsersCommandHandler(userRepository, behaviorTree)
         
 injector = Injector([ServiceCollection()])
+usersCommandHandler = injector.get(UsersCommandHandler)
 
-@router.message()
-async def first_message(message : Message):
-    usersCommandHandler = injector.get(UsersCommandHandler)
-    await usersCommandHandler.first_message(message)
+config = Config()
+bot = Bot(config.get_telegram_token(), default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+dp = Dispatcher()
+
+async def good_morning():
+    message = await bot.send_message(Config().get_telegram_members()[0], '')
+    await usersCommandHandler.good_morning(message)
+    
+# async def send_daily_message():
+#     message = await bot.send_message(Config().get_telegram_members()[0], '')
+#     await usersCommandHandler.random_behavior(message)
+
+def schedule_good_morning_message():
+    scheduler = AsyncIOScheduler()
+    hour = random.randint(6, 9)
+    minute = random.randint(0, 59)
+    scheduler.add_job(
+        good_morning,
+        CronTrigger(hour=hour, minute=minute),
+        id='good_morning_job',
+        name='Send good morning message',
+        replace_existing=True
+    )
+    scheduler.start()
+
 
 async def main() -> None:
+    schedule_good_morning_message()
+    
     db_context = injector.get(DbContext)
     db_context.show_all_tables()
     dp.include_router(router)
     await dp.start_polling(bot)
 
-config = Config()
-bot = Bot(config.get_telegram_token(), default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-dp = Dispatcher()
 
 
 if __name__ == '__main__':
