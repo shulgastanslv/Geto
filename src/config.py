@@ -1,7 +1,7 @@
 import tomllib
 from typing import List
 
-from db.common.db_context import DbContext
+from db.db_context import DbContext
 
 class Config:
     

@@ -1,6 +1,6 @@
 import datetime
 from injector import inject
-from db.common.db_context import DbContext
+from db.db_context import DbContext
 from db.models import ScheduledMessage
 from sqlalchemy import func
 

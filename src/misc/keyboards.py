@@ -1,6 +1,6 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-main = ReplyKeyboardMarkup(keyboard=[
+main_panel = ReplyKeyboardMarkup(keyboard=[
         [KeyboardButton(text='Мне грустно, я хочу тепла')],
         [KeyboardButton(text='Я очень зла, хочу выговориться')],
         [KeyboardButton(text='Я хочу поговорить с тобой')],

@@ -1,5 +1,5 @@
 from injector import inject
-from db.common.db_context import DbContext
+from db.db_context import DbContext
 from db.models import User
 
 class UserRepository:
