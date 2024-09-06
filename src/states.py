@@ -7,3 +7,10 @@ class ScheduleMessageStates(StatesGroup):
 
 class DeleteMessageStates(StatesGroup):
     waiting_for_message_id = State()
+    
+    
+class UserStates(StatesGroup):
+    Start = State()
+    Sad = State()
+    Angry = State()
+    Chat = State()

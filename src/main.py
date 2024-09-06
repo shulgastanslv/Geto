@@ -20,7 +20,7 @@ from aiogram.types import Message, ContentType
 from filters import GoodMorningFilter, GoodNightFilter
 from aiogram.fsm.context import FSMContext
 from keyboards import admin_panel, main_panel
-from states import DeleteMessageStates, ScheduleMessageStates
+from states import DeleteMessageStates, ScheduleMessageStates, UserStates
 
 
 class ServiceCollection(Module):
@@ -56,24 +56,14 @@ bot = Bot(config.get_telegram_token(), default=DefaultBotProperties(parse_mode=P
 dp = Dispatcher()
 
 
-@router.message(Command("help"))
+@router.message(F.text == "Кто ты?")
 async def get_help(message : Message):
     if str(message.chat.id) == Config().get_telegram_members()[0] or str(message.chat.id) == Config().get_telegram_members()[1]:
         help_text = (
-            f"Привет, меня зовут Гето. Моя главная цель - быть рядом и оберегать тебя.\n"
-            
-            f"Я запрограммирован присылать тебе сообщения и стараться поддерживать тебя в трудную минуту. Всё, что от тебя требуется - это нажать кнопку `Гето, просыпайся` и начать диалог, если тебе хочется поговорить или тебе грустно.\n\n"
-        
-            f"В меню ты найдешь следующие кнопки: \n"
-            f"1.Старт\n"
-            f"2.Мне грустно, я хочу тепла\n"
-            f"3.Я очень зла, хочу выговориться\n"
-            f"4.Я хочу поговорить с тобой\n"
-            f"5.Перезагрузить\n"
-            
-            f"\nЕсли произошел какой то баг, нажимай 5 кнопочку и перезагрузи меня, я постараюсь работать нормально после перезагрузки)\n\n"
-            
-            f"P.S Я могу повторять свои фразы и иногда путать контекст, но не злюкайся, пожалуйста. Я был создан всего за пару недель, и помни, что я тебя очень сильно люблю! ❤️❤️ (Твой котенок)!\n\n"
+            f"Привет, меня зовут Гето. Моя главная цель - быть рядом и оберегать тебя.\n\n"
+            f"Я запрограммирован присылать тебе сообщения и стараться поддерживать тебя в трудную минуту. Всё, что от тебя требуется - это нажать на кнопку `Старт` и начать диалог, если тебе хочется поговорить или тебе грустно.\n\n"
+            f"Если произошел какой то баг, нажимай 5 кнопочку и перезагрузи меня, я постараюсь работать нормально после перезагрузки)\n\n"
+            f"P.S Я могу повторять свои фразы и иногда путать контекст, но не злюкайся, пожалуйста. Я был создан всего за пару недель, и помни, что я тебя очень сильно люблю ❤️❤️\n"
         )
         await message.answer(help_text)
 
@@ -92,48 +82,53 @@ async def send_scheduled_messages():
 
 @router.message(F.text == "Запланировать сообщение")
 async def schedule_message_start(message: Message, state: FSMContext):
-    await message.answer("Введите ID получателя:")
-    await state.set_state(ScheduleMessageStates.waiting_for_recipient_id)
+    if str(message.chat.id) == Config().get_telegram_members()[0]:
+        await message.answer("Введите ID получателя:")
+        await state.set_state(ScheduleMessageStates.waiting_for_recipient_id)
 
 @router.message(ScheduleMessageStates.waiting_for_recipient_id)
 async def enter_recipient_id(message: Message, state: FSMContext):
-    recipient_id = message.text
-    await state.update_data(recipient_id=recipient_id)
-    await message.answer("Введите текст сообщения:")
-    await state.set_state(ScheduleMessageStates.waiting_for_message_content)
+    if str(message.chat.id) == Config().get_telegram_members()[0]:
+        recipient_id = message.text
+        await state.update_data(recipient_id=recipient_id)
+        await message.answer("Введите текст сообщения:")
+        await state.set_state(ScheduleMessageStates.waiting_for_message_content)
 
 @router.message(ScheduleMessageStates.waiting_for_message_content)
 async def enter_message_content(message: Message, state: FSMContext):
-    message_content = message.text
-    await state.update_data(message_content=message_content)
-    await message.answer("Введите дату и время отправки (в формате YYYY-MM-DD HH:MM:SS):")
-    await state.set_state(ScheduleMessageStates.waiting_for_scheduled_time)
+    if str(message.chat.id) == Config().get_telegram_members()[0]:
+        message_content = message.text
+        await state.update_data(message_content=message_content)
+        await message.answer("Введите дату и время отправки (в формате YYYY-MM-DD HH:MM:SS):")
+        await state.set_state(ScheduleMessageStates.waiting_for_scheduled_time)
 
 @router.message(ScheduleMessageStates.waiting_for_scheduled_time)
 async def enter_scheduled_time(message: Message, state: FSMContext):
-    try:
-        scheduled_time = datetime.strptime(message.text, "%Y-%m-%d %H:%M:%S")
-        user_data = await state.get_data()
-        recipient_id = int(user_data['recipient_id'])
-        message_content = user_data['message_content']
-        
-        scheduledMessageRepository.add_message(
-            scheduler_id=message.from_user.id, 
-            recipient_id=recipient_id, 
-            message=message_content, 
-            scheduled_time=scheduled_time
-        )
-        
-        await message.answer(f"Сообщение запланировано на {scheduled_time}.")
-    except ValueError:
-        await message.answer("Неверный формат даты. Пожалуйста, используйте формат YYYY-MM-DD HH:MM:SS")
-    finally:
-        await state.clear()
+    if str(message.chat.id) == Config().get_telegram_members()[0]:
+        try:
+            scheduled_time = datetime.strptime(message.text, "%Y-%m-%d %H:%M:%S")
+            user_data = await state.get_data()
+            recipient_id = int(user_data['recipient_id'])
+            message_content = user_data['message_content']
+            
+            scheduledMessageRepository.add_message(
+                scheduler_id=message.from_user.id, 
+                recipient_id=recipient_id, 
+                message=message_content, 
+                scheduled_time=scheduled_time
+            )
+            
+            await message.answer(f"Сообщение запланировано на {scheduled_time}.")
+        except ValueError:
+            await message.answer("Неверный формат даты. Пожалуйста, используйте формат YYYY-MM-DD HH:MM:SS")
+        finally:
+            await state.clear()
 
 @router.message(F.text == "Удалить запланированное сообщение")
 async def delete_scheduled_message(message: Message, state: FSMContext):
-    await message.answer("Введите ID сообщения, которое нужно удалить:")
-    await state.set_state(DeleteMessageStates.waiting_for_message_id)
+    if str(message.chat.id) == Config().get_telegram_members()[0]:
+        await message.answer("Введите ID сообщения, которое нужно удалить:")
+        await state.set_state(DeleteMessageStates.waiting_for_message_id)
 
 @router.message(DeleteMessageStates.waiting_for_message_id)
 async def delete_message_by_id(message: Message, state: FSMContext):
@@ -150,25 +145,26 @@ async def delete_message_by_id(message: Message, state: FSMContext):
 
 @router.message(F.text == "Показать все запланированные сообщения")
 async def show_all_scheduled_messages(message: Message):
-    try:
-        messages = scheduledMessageRepository.get_all_messages()
-        
-        if messages:
-            response = "\n\n".join(
-                f"ID: {msg.id}\n"
-                f"Recipient ID: {msg.recipient_id}\n"
-                f"Message: {msg.message}\n"
-                f"Scheduled Time: {msg.scheduled_time.strftime('%Y-%m-%d %H:%M:%S')}"
-                for msg in messages
-            )
-            await message.answer(f"Все запланированные сообщения:\n\n{response}")
-        else:
-            await message.answer("Запланированных сообщений нет.")
-    except Exception as e:
-        await message.answer(f"Ошибка при получении сообщений: {str(e)}")
+    if str(message.chat.id) == Config().get_telegram_members()[0]:
+        try:
+            messages = scheduledMessageRepository.get_all_messages()
+            
+            if messages:
+                response = "\n\n".join(
+                    f"ID: {msg.id}\n"
+                    f"Recipient ID: {msg.recipient_id}\n"
+                    f"Message: {msg.message}\n"
+                    f"Scheduled Time: {msg.scheduled_time.strftime('%Y-%m-%d %H:%M:%S')}"
+                    for msg in messages
+                )
+                await message.answer(f"Все запланированные сообщения:\n\n{response}")
+            else:
+                await message.answer("Запланированных сообщений нет.")
+        except Exception as e:
+            await message.answer(f"Ошибка при получении сообщений: {str(e)}")
 
 @router.message(CommandStart())
-async def start(message : Message):
+async def start(message : Message, state: FSMContext):
     if str(message.chat.id) == Config().get_telegram_members()[0]:
         await bot.send_message(message.chat.id, f"привет, {message.chat.first_name}", reply_markup=admin_panel)
     elif str(message.chat.id) == Config().get_telegram_members()[1]:
@@ -176,12 +172,52 @@ async def start(message : Message):
         await bot.send_message(message.chat.id, random.choice(hello_answers), reply_markup=main_panel)
     else:
         await bot.send_message(message.chat.id, f"привет, {message.chat.first_name}")
-        
-@router.message(F.text == "Гето, просыпайся!")
-async def geto_start(message: Message):
-    await start(message)
+    await state.set_state(UserStates.Start)
+   
+@router.message(F.text == 'Мне грустно, я хочу тепла')
+async def sad_handler(message: Message, state: FSMContext):
+    await message.answer("не грусти котенок, я с тобой! вот тебе немного тепла ❤️")
+    await state.set_state(UserStates.Sad)
     
-@router.message(F.text == "Контекст дерева")
+@router.message(F.text == 'Я очень зла, хочу выговориться')
+async def angry_handler(message: Message, state: FSMContext):
+    await message.answer("расскажи мне, что случилось, и я постараюсь помочь")
+    await state.set_state(UserStates.Angry)
+   
+@router.message(F.text == 'Я хочу поговорить с тобой')
+async def chat_handler(message: Message, state: FSMContext):
+    await message.answer("конечно, я всегда готов поговорить с тобой, булка ты моя")
+    await state.set_state(UserStates.Chat)
+
+@router.message(F.text == "Старт")
+async def geto_start(message: Message, state : FSMContext):
+    await start(message, state)
+    
+@router.message(F.text.contains("ну что ты"))
+async def how_are_you(message: Message):
+    await message.answer("у меня все хорошо котик, а ты там как?")
+    
+@router.message(F.text.contains("что делаешь?"))
+async def how_are_you(message: Message):
+    await message.answer("сижу, котик, а ты что там?")
+    
+@router.message(F.text.contains("когда спать?"))
+async def how_are_you(message: Message):
+    await message.answer("скорооо уже")
+    
+@router.message(F.text.contains("как ты там?"))
+async def how_are_you(message: Message):
+    await message.answer("все хорошооо, котик, а ты чтоо? как настроение?")
+    
+@router.message(F.text.contains("как настроение?"))
+async def how_are_you(message: Message):
+    await message.answer("все хорошооо, котик ❤️")
+    
+@router.message(F.text.contains("чего молчишь"))
+async def how_are_you(message: Message):
+    await message.answer("не молчу, это ты чего не пишешь!")
+    
+@router.message(Command("/bht_context"))
 async def context_bh(message: Message):
     if str(message.chat.id) == Config().get_telegram_members()[0]:
         await usersCommandHandler.handle_behavior_tree_context(message)
@@ -195,7 +231,6 @@ async def handle_voice_message(message: Message):
 async def handle_photo_message(message: Message):
     if str(message.chat.id) in Config().get_telegram_members():
         await usersCommandHandler.handle_photo(message)
-
 
 @router.message(GoodNightFilter())
 async def good_night(message : Message):

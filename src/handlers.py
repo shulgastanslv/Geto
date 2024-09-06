@@ -87,7 +87,8 @@ class UserCommandHandler:
             answers = ["рано спатки, ты что", "уже спатки?", "пойдешь уже что ли", "устала там?", "чудо ты, уже пойдешь?"]
             self.behaviorTree.update(SequenceNode([
                 condition_node,
-                ActionNode('handle_good_night<21', lambda: self.__send_message(message, random.choice(answers)))
+                ActionNode('handle_good_night<21', lambda: self.__send_message(message, random.choice(answers)), execute_once=True),
+                ActionNode('good_night_sticker', lambda: self.__send_sticker(message, random.choice(self.stickers)))
             ]))
             await self.behaviorTree.run()
             return True
@@ -171,7 +172,9 @@ class UserCommandHandler:
             answers = ["какое утро, мелочь ты", "сейчас день, какое утро", "только встала что ли? соня ты моя", "сейчас день, лыжа ты сонная",
                        "ты моя булка, какое утро"]
             self.behaviorTree.update(SequenceNode([condition_node, 
-                                    ActionNode('not_morning', lambda : self.__send_message(message, random.choice(answers)))]))
+                                    ActionNode('not_morning', lambda : self.__send_message(message, random.choice(answers)), execute_once=True), 
+                                    ActionNode('send_sticker', lambda : self.__send_sticker(message, random.choice(self.stickers)))]))
+            
             await self.behaviorTree.run()
             
     def handle_sleep(self, time_sleep) -> bool:
@@ -190,16 +193,35 @@ class UserCommandHandler:
         send_second_message =  ActionNode('send_voice_second_message', lambda : self.__send_message(message, random.choice(second_answers)))
         send_third_message =  ActionNode('send_voice_third_message', lambda : self.__send_message(message, random.choice(third_answers)), execute_once=True)
         sleep_duration = ActionNode('sleep_duration', lambda : self.__handle_sleep(message.voice.duration))
+        send_sticker = ActionNode('send_sticker', lambda : self.__send_sticker(message, random.choice(self.stickers)))
         
         self.behaviorTree.update(SequenceNode([condition_node, 
                                                send_first_message, 
                                                sleep_duration, 
                                                send_second_message, 
-                                               sleep_duration, send_third_message]))
+                                               sleep_duration, send_third_message, send_sticker]))
         await self.behaviorTree.run()
 
     async def handle_photo(self, message: Message):
-        await message.answer("ты ж мой милашик!")
+        condition_node = ConditionNode('message_is_not_none', lambda: message is not None)
+        
+        first_answers = ["уу, хехехех", "ууу, хехехе", "уууу"]
+        second_answers = ["если бы я мог оценить фоточки 😭😭😭", "к сожалению мой создатель не предусмотрел возможность оценки фоточек", "если бы я видел что на фоточке.."]
+        third_answers = ["я обязательно все потом посмотрю, шли побольше фоточек!!", 
+                         "я обязательно все посмотрю котик, присылай фотки почаще", "хехе, морда ты моя, если бы я мог сейчас посмотреть на тебя"]
+        
+        send_first_message = ActionNode('send_photo_first_message', lambda : self.__send_message(message, random.choice(first_answers)), execute_once=True)
+        send_second_message =  ActionNode('send_photo_second_message', lambda : self.__send_message(message, random.choice(second_answers)))
+        send_third_message =  ActionNode('send_photo_third_message', lambda : self.__send_message(message, random.choice(third_answers)), execute_once=True)
+        sleep_duration = ActionNode('sleep_duration', lambda : self.__handle_sleep(random.randint(1, 10)))
+        send_sticker = ActionNode('send_sticker', lambda : self.__send_sticker(message, random.choice(self.stickers)))
+        
+        self.behaviorTree.update(SequenceNode([condition_node, 
+                                               send_first_message, 
+                                               sleep_duration, 
+                                               send_second_message, 
+                                               sleep_duration, send_third_message, send_sticker]))
+        await self.behaviorTree.run()
         
     async def handle_behavior_tree_context(self, message: Message):
         actions = self.behaviorTree.context.get_completed_actions()
