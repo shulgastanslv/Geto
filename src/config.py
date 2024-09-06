@@ -14,13 +14,7 @@ class Config:
             self.telegram = config_data.get('telegram', {})
     
     def get_db_connection_string(self) -> str:
-        return (
-            self.database['host'] + ":" + 
-            self.database['password'] + 
-            str(self.database['user']) + ":" + 
-            str(self.database['port']) + "/" + 
-            str(self.database['database_name'])
-    )
+        return self.database['driver'] + self.database['db']
     
     def get_telegram_token(self) -> str:
         return self.telegram.get('token', '')

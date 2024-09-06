@@ -52,9 +52,14 @@ usersCommandHandler = injector.get(UserCommandHandler)
 scheduledMessageRepository = injector.get(ScheduledMessageRepository)
 
 config = Config() 
-bot = Bot(config.get_telegram_token(), default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+from aiogram.client.session.aiohttp import AiohttpSession
+session = AiohttpSession(proxy='http://proxy.server:3128')
+bot = Bot(config.get_telegram_token(), default=DefaultBotProperties(parse_mode=ParseMode.HTML), session=session)
 dp = Dispatcher()
 
+db = injector.get(DbContext)
+if not db.table_exists("users") and not db.table_exists("scheduled_messages"):
+    db.create_all_tables()
 
 @router.message(F.text == "Кто ты?")
 async def get_help(message : Message):
