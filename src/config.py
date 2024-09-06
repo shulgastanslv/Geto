@@ -1,7 +1,5 @@
-import tomllib
+import tomli
 from typing import List
-
-from db.db_context import DbContext
 
 class Config:
     
@@ -11,16 +9,17 @@ class Config:
     
     def _load_config(self):
         with open(self.config_file, 'rb') as file:
-            config_data = tomllib.load(file)
+            config_data = tomli.load(file)
             self.database = config_data.get('database', {})
             self.telegram = config_data.get('telegram', {})
     
     def get_db_connection_string(self) -> str:
         return (
-            f"{str(self.database['host']) + ":" + 
-            str(self.database['password']) + str(self.database['user']) 
-            + ":" + str(self.database['port']) 
-            + "/" + str(self.database['database_name'])}"
+            self.database['host'] + ":" + 
+            self.database['password'] + 
+            str(self.database['user']) + ":" + 
+            str(self.database['port']) + "/" + 
+            str(self.database['database_name'])
     )
     
     def get_telegram_token(self) -> str:

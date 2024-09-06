@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 import asyncio
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Union
 import inspect
+from uuid import uuid4
 from injector import inject
 from functools import singledispatch, singledispatchmethod, wraps
-
 from enum import Enum
 
 class Status(Enum):
@@ -53,13 +53,13 @@ def handle_exceptions(func: Callable) -> Callable:
 
 class BehaviorTreeContext:
     def __init__(self) -> None:
-        self._completed_actions: List[str] = []
+        self._completed_actions: List[Tuple[int, str]] = []
 
-    def save(self, action_id: str) -> None:
-        if action_id not in self._completed_actions:
-            self._completed_actions.append(action_id)
+    def save(self, func_id: int, name: str) -> None:
+        if (func_id, name) not in self._completed_actions:
+            self._completed_actions.append((func_id, name))
     
-    def get_completed_actions(self) -> List[str]:
+    def get_completed_actions(self) -> List[Tuple[int, str]]:
         return self._completed_actions.copy()
 
 class Node(ABC):
@@ -72,27 +72,32 @@ class Node(ABC):
         pass
 
 class ActionNode(Node):
-    def __init__(self, action: Callable[[], Union[bool, Awaitable[bool]]], repeat: bool = False, 
+    def __init__(self, name: str, action: Callable[[], Union[bool, Awaitable[bool]]], repeat: bool = False, 
                  repeat_count: int = 1, execute_once: bool = False) -> None:
         self.action = action
         self.repeat = repeat
         self.repeat_count = repeat_count
         self.execute_once = execute_once
+        self.name = name
 
     async def tick(self, context: BehaviorTreeContext) -> Result:
-        action_id = f"{self.action.__name__}"
+        if self.execute_once and any(name == self.name for _, name in context.get_completed_actions()):
+            # Действие уже выполнено один раз, пропускаем
+            print(f"Action {self.name} already executed once")
+            return Result(Status.Success)
+        
         if self.repeat:
             for _ in range(self.repeat_count):
-                if self.execute_once and action_id in context.get_completed_actions():
-                    continue
                 result = await self._execute_action()
                 if result.is_failure():
                     return result
+            context.save(str(uuid4()), self.name)  # Сохранить действие после успешного выполнения
             return Result(Status.Success)
-        else:
-            if self.execute_once and action_id in context.get_completed_actions():
-                return Result(Status.Success)
-            return await self._execute_action()
+        
+        result = await self._execute_action()
+        if result.is_success():
+            context.save(str(uuid4()), self.name)  # Сохранить действие после успешного выполнения
+        return result
     
     @handle_exceptions
     async def _execute_action(self) -> Result:
@@ -104,27 +109,29 @@ class ActionNode(Node):
     def to_dict(self) -> Dict[str, Any]:
         return {
             'type': 'ActionNode',
-            'action': self.action.__name__,
+            'action': self.name,
             'repeat': self.repeat,
             'repeat_count': self.repeat_count,
             'execute_once': self.execute_once
         }
 
 class ConditionNode(Node):
-    def __init__(self, condition: Callable[[], Union[bool, Awaitable[bool]]]) -> None:
+    def __init__(self, name, condition: Callable[[], Union[bool, Awaitable[bool]]]) -> None:
         self.condition = condition
+        self.name = name
 
     async def tick(self, context: BehaviorTreeContext) -> Result:
         if asyncio.iscoroutinefunction(self.condition):
             result = await self.condition()
         else:
             result = self.condition()
+        context.save(str(uuid4()), self.name)
         return Result(Status.Success) if result else Result(Status.Failure)
     
     def to_dict(self) -> Dict[str, Any]:
         return {
             'type': 'ConditionNode',
-            'condition': self.condition.__name__
+            'condition': self.name
         }
 
 class SequenceNode(Node):

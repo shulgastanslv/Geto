@@ -1,7 +1,7 @@
 from typing import Optional
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import sessionmaker
-from db.models import Base
+from models import Base
 
 class DbContext:
     

@@ -3,7 +3,7 @@ from datetime import datetime
 import logging
 import random
 import sys
-from common.behavior_tree import BehaviorTree
+from behavior_tree import BehaviorTree
 from handlers import router
 from aiogram.client.default import DefaultBotProperties
 from aiogram import F, Bot, Dispatcher, html
@@ -11,19 +11,18 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from injector import Injector, inject, Module, provider, singleton
 from config import Config
-from db.db_context import DbContext
-from handlers.user import UserCommandHandler
-from repositories.scheduled_message import ScheduledMessageRepository
-from repositories.user import UserRepository
+from db_context import DbContext
+from handlers import UserCommandHandler
+from repositories import ScheduledMessageRepository
+from repositories import UserRepository
 from aiogram.filters import CommandStart, Command
-from aiogram.types import Message
-from misc.filters import GoodMorningFilter, GoodNightFilter
-from common.scheduler import Scheduler
+from aiogram.types import Message, ContentType
+from filters import GoodMorningFilter, GoodNightFilter
 from aiogram.fsm.context import FSMContext
-from misc.keyboards import admin_panel, main_panel
-import uuid
+from keyboards import admin_panel, main_panel
+from states import DeleteMessageStates, ScheduleMessageStates
 
-from states.scheduled_message import DeleteMessageStates, ScheduleMessageStates
+
 class ServiceCollection(Module):
     
     def configure(self, binder):
@@ -40,6 +39,7 @@ class ServiceCollection(Module):
         return UserRepository(db)
     
     @provider
+    @singleton
     def provide_behavior_tree(self) -> BehaviorTree:
         return BehaviorTree()
 
@@ -60,17 +60,18 @@ dp = Dispatcher()
 async def get_help(message : Message):
     if str(message.chat.id) == Config().get_telegram_members()[0] or str(message.chat.id) == Config().get_telegram_members()[1]:
         help_text = (
-            f"Привет, котенок, меня зовут Гето. Моя главная цель - быть рядом и оберегать тебя.\n"
+            f"Привет, меня зовут Гето. Моя главная цель - быть рядом и оберегать тебя.\n"
             
-            f"Я запрограммирован присылать тебе сообщения и стараться поддерживать тебя в трудную минуту. Всё, что от тебя требуется - это нажать кнопку /start и начать диалог, если тебе хочется поговорить или тебе грустно.\n\n"
+            f"Я запрограммирован присылать тебе сообщения и стараться поддерживать тебя в трудную минуту. Всё, что от тебя требуется - это нажать кнопку `Гето, просыпайся` и начать диалог, если тебе хочется поговорить или тебе грустно.\n\n"
         
             f"В меню ты найдешь следующие кнопки: \n"
-            f"1.Мне грустно, я хочу тепла\n"
-            f"2.Я очень зла, хочу выговориться\n"
-            f"3.Я хочу поговорить с тобой\n"
-            f"4.Перезагрузить\n"
+            f"1.Старт\n"
+            f"2.Мне грустно, я хочу тепла\n"
+            f"3.Я очень зла, хочу выговориться\n"
+            f"4.Я хочу поговорить с тобой\n"
+            f"5.Перезагрузить\n"
             
-            f"\nЕсли произошел какой то глюк, нажимай 4 кнопочку и перезагрузи меня, я постараюсь работать нормально после перезагрузки)\n\n"
+            f"\nЕсли произошел какой то баг, нажимай 5 кнопочку и перезагрузи меня, я постараюсь работать нормально после перезагрузки)\n\n"
             
             f"P.S Я могу повторять свои фразы и иногда путать контекст, но не злюкайся, пожалуйста. Я был создан всего за пару недель, и помни, что я тебя очень сильно люблю! ❤️❤️ (Твой котенок)!\n\n"
         )
@@ -167,29 +168,49 @@ async def show_all_scheduled_messages(message: Message):
         await message.answer(f"Ошибка при получении сообщений: {str(e)}")
 
 @router.message(CommandStart())
-async def good_night(message : Message):
+async def start(message : Message):
     if str(message.chat.id) == Config().get_telegram_members()[0]:
-        await bot.send_message(message.chat.id, "привет", reply_markup=admin_panel)
+        await bot.send_message(message.chat.id, f"привет, {message.chat.first_name}", reply_markup=admin_panel)
     elif str(message.chat.id) == Config().get_telegram_members()[1]:
         hello_answers = ["привет котенок!", "ну что ты, мелочь моя", "приветик, котик"]
         await bot.send_message(message.chat.id, random.choice(hello_answers), reply_markup=main_panel)
     else:
-        await bot.send_message(message.chat.id, "Привет!")
+        await bot.send_message(message.chat.id, f"привет, {message.chat.first_name}")
+        
+@router.message(F.text == "Гето, просыпайся!")
+async def geto_start(message: Message):
+    await start(message)
+    
+@router.message(F.text == "Контекст дерева")
+async def context_bh(message: Message):
+    if str(message.chat.id) == Config().get_telegram_members()[0]:
+        await usersCommandHandler.handle_behavior_tree_context(message)
+
+@router.message(F.voice)
+async def handle_voice_message(message: Message):
+    if str(message.chat.id) in Config().get_telegram_members():
+        await usersCommandHandler.handle_voice(message)
+
+@router.message(F.photo)
+async def handle_photo_message(message: Message):
+    if str(message.chat.id) in Config().get_telegram_members():
+        await usersCommandHandler.handle_photo(message)
+
 
 @router.message(GoodNightFilter())
 async def good_night(message : Message):
-    if str(message.chat.id) == Config().get_telegram_members()[0] or str(message.chat.id) == Config().get_telegram_members()[1]:
-        await usersCommandHandler.good_night(message)
+    if str(message.chat.id) in Config().get_telegram_members():
+        await usersCommandHandler.handle_good_night(message)
 
 @router.message(GoodMorningFilter())
 async def good_morning(message : Message):
-    if str(message.chat.id) == Config().get_telegram_members()[0] or str(message.chat.id) == Config().get_telegram_members()[1]:
-        await usersCommandHandler.good_morning(message)
+     if str(message.chat.id) in Config().get_telegram_members():
+        await usersCommandHandler.handle_good_morning(message)
     
 @router.message()
 async def random_message(message : Message):
-    if str(message.chat.id) == Config().get_telegram_members()[0] or str(message.chat.id) == Config().get_telegram_members()[1]:
-        await usersCommandHandler.random_behavior(message)
+    if str(message.chat.id) in Config().get_telegram_members():
+        await usersCommandHandler.handle_random_behavior(message)
 
 
 async def main() -> None:
