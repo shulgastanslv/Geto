@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime
 import time
 import random
@@ -8,50 +9,25 @@ from injector import inject, provider, singleton
 from behavior_tree import BehaviorTree, BehaviorTreeContext, ConditionNode, ActionNode, SequenceNode
 from config import Config
 from keyboards import *
-from repositories import UserRepository
+from repositories import ScheduledMessageRepository, UserRepository
+from sticker_loader import StickerLoader
 
 router = Router()
 
 class UserCommandHandler:
     
     @inject
-    def __init__ (self, userRepository : UserRepository, behaviorTree : BehaviorTree) -> None:
+    def __init__ (self, userRepository : UserRepository, behaviorTree : BehaviorTree, 
+                  scheduledMessageRepository : ScheduledMessageRepository) -> None:
         self.behaviorTree = behaviorTree
         self.userRepository = userRepository
+        self.scheduledMessageRepository = scheduledMessageRepository
         self.emojies = ["💞", "❤️", "🤍", "🖤"]
         self.nicknames = ["солнышко", "котенок", "буська", "котик", "жопка", "госпожа", "вредина", "прекрасная морда", "дорогая", "милая", "самая лучшая женщина в мире", 
                     "солнце", "котеночек", "пупс"]
         self.first_message_questions = ["хочешь поговорить, ", "ну что ты, ", "как ты там, ", "я тут, ", "скучаешь там, ", "ну чтоо ты, "]
-        self.stickers = [
-            'CAACAgIAAxkBAAEH7qRmyFo8FUWljxFcnpFw_IKXeWMNdgACChoAAojy0EtnWpcq_Ye04TUE',
-            'CAACAgIAAxkBAAEH7p1myForICfvo5q5J4tqimgLxciOhQACjhYAAvcayUvqMHys4N1qTDUE',
-            'CAACAgIAAxkBAAEH7pVmyFobEwf8gDUNh-BP_V7WT3AKyQACpBwAAp6NSUrsxt4FJ3d2eDUE',
-            'CAACAgIAAxkBAAEH7pFmyFoVxQLtrUTAhu-yPd4IJzvzAwACjhwAAklRSUq8mKapt5umCzUE',
-            'CAACAgIAAxkBAAEH7o1myFoQmtnU7qVIRLtcFg8BVPTLeQACriMAApGnQEq7EH8rWyMSOjUE',
-            'CAACAgIAAxkBAAEIEO9mz3022xILcVbrFCeHVG5UTrtalQACfxMAAkfO2UuxS5hlg2Vr4zUE',
-            'CAACAgIAAxkBAAEIEPFmz30-EhyIyEBM9Dx1lXU85XAbrAACNBIAAhPX2EsAAbFTK7Zm0XQ1BA',
-            'CAACAgIAAxkBAAEIEPNmz31F0nrD227SaFcyQbwnUMZDcQACFxQAAlXX2Es_ehiLlrWrKDUE',
-            'CAACAgIAAxkBAAEIEPVmz31O09B7kByzRUT7sEp0t0GgPgACxhMAAtGkSUjUeWvO3nGgcjUE',
-            'CAACAgIAAxkBAAEIEPdmz31XUGbtZBuca_2Emxg7qaVrwAACkBUAArTlyUvP28AHDr-D6TUE',
-            'CAACAgIAAxkBAAEIEP1mz31k5IQKFTdCjDttAAErfxoS4nUAAjgUAALRTMhLzAQ6pNA-xiA1BA',
-            'CAACAgIAAxkBAAEIGIJm0Moou0mW3lAdBgSNyj2J_ZpKzgACJysAAp26IUlgaofnkUC5GDUE',
-            'CAACAgIAAxkBAAEIGIRm0MouPHmEKxjQ8HseGxQqkg_7PAAC7CkAAh9BKUk3P5pqWUQQYTUE',
-            'CAACAgIAAxkBAAEIGIZm0MozyBK_bgrmKzIX3usS7YPlawACxx8AAvqTKEkQdpZ9DFhQZTUE',
-            'CAACAgIAAxkBAAEIGIhm0Mo5KaE9p0JZ6yHqAAGaW972N9EAAuMpAAKPXiBJfnGFvkC-PNg1BA',
-            'CAACAgIAAxkBAAEIGIpm0MpAMN2AM3EX9jXJu0hIYSOMGwAClCQAAr5KIEmkjFtuaVoK3jUE',
-            'CAACAgIAAxkBAAEIGIxm0MpF7cLpq_l1LKMzqUAEEylS5wACyx0AAgVrKUn_KQPL15mTdTUE',
-            'CAACAgIAAxkBAAEIGI5m0MpKyHnVkKSAkVHg1XF7Rtak7QACaicAAl1nIUkzOlrxGXS_WjUE',
-            'CAACAgIAAxkBAAEIGJBm0MpQR7NhSryV44SigmK4DeuooAAC3iwAAo60KUkkJTbYjlVE1jUE',
-            'CAACAgIAAxkBAAEIGJJm0MpVzk8m3s3mugg2kmTTVeyDqgACyx0AAgVrKUn_KQPL15mTdTUE',
-            'CAACAgIAAxkBAAEIGJRm0MpbsNS3gbHdo5t-Ile_vSqMvQACWSgAAmsoKUkpA0mygqBUBjUE',
-            'CAACAgIAAxkBAAEIGJZm0Mv_Pi5IENtSyLz5KVz-S-QxZwACKFEAAu3HEUr2bVYxwf_tmDUE',
-            'CAACAgIAAxkBAAEIGJpm0MwOoUn1JJDanDaP_1nuvBOYcAAC91cAAmfnGUpNSeTPG1OK9TUE',
-            'CAACAgIAAxkBAAEIGJxm0MwWDPYr5-pqyFGJCIzVAa6Q3wACs0wAAu5aGUpUoZfJsCcwQDUE',
-            'CAACAgIAAxkBAAEIGJ5m0MwccsDKjJJDhPK8Ibsx3YBRdQACel8AAsplEUqzvuiPXkNP1zUE',
-            'CAACAgIAAxkBAAEIGKRm0Mwm85h3NtQZPNKr4ZJq4MiFXwACilMAApwTGEqShO-Z34bWXjUE',
-            'CAACAgIAAxkBAAEIGKZm0MwtuMGfOGBZUSYtlCd3UTrOTwACplIAAuAFGEqGPvIsy8SQzjUE',
-            'CAACAgIAAxkBAAEIGLBm0Mw7XityUjvY7M3r3kl6KzFIsAACikwAAmFVGUpxDzfdgL1cRjUE'
-        ]
+        self.sticker_loader = StickerLoader('src/stickers.txt')
+        self.stickers = self.sticker_loader._load_stickers()
         
     def __handle_sleep(self, time_sleep) -> bool:
         time.sleep(time_sleep)
@@ -60,10 +36,107 @@ class UserCommandHandler:
     async def __send_message(self, message: Message, text: str) -> bool:
         await message.answer(text)
         return True
-
+    
+    async def __reply(self, message: Message, text: str) -> bool:
+        await message.reply(text)
+        return True
+    
     async def __send_sticker(self, message: Message, sticker: str) -> bool:
         await message.answer_sticker(sticker)
         return True
+    
+    async def handle_sticker_message(self, message : Message):
+        condition_node = ConditionNode('message_is_not_none', lambda: message is not None)
+        sleep_duration = ActionNode('sleep_duration', lambda : self.__handle_sleep(random.randint(1, 5)))
+        send_sticker = ActionNode('send_sticker', lambda : self.__send_sticker(message, random.choice(self.stickers)))
+        self.behaviorTree.update(SequenceNode([condition_node, 
+                                               sleep_duration, send_sticker]))
+        await self.behaviorTree.run()
+        
+    async def sad_handler(self, message : Message):
+        
+        time = datetime.now()
+        
+        condition_node = ConditionNode('message_is_not_none', lambda: message is not None)
+        sleep_duration = ActionNode('sleep_duration', lambda : self.__handle_sleep(random.randint(1, 5)))
+        
+        first_answers = ["ну что ты котенок? хочешь чтобы я тебя выслушал ?", 
+                         "не грусти там, морда моя, и помни, я тебя очень сильно люблю!!❤️", 
+                         "давай поговорим котенок, расскажи мне в чем дело? что у тебя на душе",
+                         "что у тебя на душе, котик, расскажи мне",
+                         "я рядом котенок, помни это, ты моя самая прекрасная женщина, самая красивая и самая милая, я тебя очень сильно люблю!!❤️",
+                         "котик, я не знаю что у тебя случилось, и к сожалению в связи с тем что я в армию пока что не смогу узнать, но помни, мысленно я рядом с тобой. расскажи все что тебя гложит! я тебя выслушаю. ты у меня сильная и все пройдешь",
+                         "у тебя что-то на душе котик? давай поговорим и все решим",
+                         "ну чтооо ты, морда моя. давай рассказывай как ты",
+                         "ну что ты там, морда моя, я тебя очень сильно люблю❤️❤️",
+                         "что случилось котик? давай выслушаю тебя, расскажи мне все то что у тебя на душе. мне очень важно !!! я хочу чтобы моя любимая женщина никогда не грустила"]
+        second_answers = [
+            "помни, что ты моя самая любимая женщина, самая прекрасная и лучшая в мире, я бесконечно люблю тебя. я желаю видеть только улыбку на твоем прекрасном лице",
+            "помни, котик, что ты мне очень дорога, я тебя просто обожаю",
+            "ты моя душа котик, я тебя очень-очень люблю, не расстраивайся там, я рядом",
+            "ты ж мой котенок, я тебя очень люблю",
+            "я тебя безумно люблю, ты мой пушин",
+            "ты ж моя морда, помни, я всегда рядом котик, ты со всем справишься, ты очень сильная котик!",
+            "моя ты морда, ну что ты там раскисла, давай, не расстраивайся и попробуй отвлечься, я тебя очень люблю!!❤️❤️",
+            "мелочь ты моя, ну что ты там, давай-ка, помни, я рядом котик!❤️❤️"
+        ]
+        
+        stickers = [
+            'CAACAgIAAxkBAAEIUGZm3D61crSZqtuWV5Wnn1Z0DHHFgAACjTMAAppSmUqAw97Qywn_WzYE',
+            'CAACAgIAAxkBAAEIUGhm3D65bJnDJWF-64uLtVw4k_2gWAAC3DYAAnCdoUqltb72CIoNezYE',
+            'CAACAgIAAxkBAAEIUGxm3D7D5cpCLK8UitFyN26kwhug9AACty4AAnNUoEogkXDX8UWQmjYE',
+            'CAACAgIAAxkBAAEIUG5m3D7MQj65w3-ndC9IW6kXtLRgYQACyTEAAlHTmUotgShkPd2bszYE',
+            'CAACAgIAAxkBAAEIUHBm3D7SGtxq9qzpUloRVwsv6Zpx-wACYy4AAszNmEq5GKHgl5dmMjYE',
+            'CAACAgIAAxkBAAEIT89m3C0Eaf4Hhad27iXNyeg4r4FeBgACYzQAAuYXmErAFHbsE6_CUzYE',
+            'CAACAgIAAxkBAAEIUHRm3D7dMPeUDgil_QPJeAhxsbiingACIjIAAq0soEpyQRPhKVTRIzYE',
+            'CAACAgIAAxkBAAEIUHZm3D7oqOW5QeCqHL0jJ5LK86mukQAChiYAAn3bKUkYHIsndCL4LTYE',
+            'CAACAgIAAxkBAAEIUHhm3D7tcnU3D2MFfbGoOBn3UkdqqwACxxwAAojnKEnWs7o3shbfVjYE',
+            'CAACAgIAAxkBAAEIUHpm3D71q8v76X5a7rI0D-RLN28tOgAC3SIAAn3bKEl786kPFUfnUTYE',
+            'CAACAgIAAxkBAAEIUHxm3D76ZX4oanAkdIqmvrCoHJ4YfQACLi0AAjs0KEnAfFgYHyWj6jYE',
+            'CAACAgIAAxkBAAEIUH5m3D7_HWeRsoRyP8TTGMnG1R40HwACoyoAAuEiKEkiz35I0tRCJzYE',
+            'CAACAgIAAxkBAAEIUIBm3D8D5lVnTRSnn8g82N-siUCfhwACHSgAAvfJKUkETvNifE_DazYE',
+            'CAACAgIAAxkBAAEIUIJm3D8HPT0sY9yAavIUJEgOcSdi-AACNB0AAggGKElkgjaID_b3cTYE'
+        ]        
+        
+        not_action = ActionNode('not_action', lambda: True)
+        send_first_message = [ActionNode('send_first_message', lambda : self.__send_message(message, random.choice(first_answers))), ActionNode('send_second_message', lambda : self.__send_message(message, random.choice(second_answers)))]
+        send_sticker = [ActionNode('send_sticker', lambda: self.__send_sticker(message, random.choice(stickers))), not_action]
+        send_time_message = not_action
+        
+        if time.hour > 6 and time.hour < 12:
+            send_time_message = ActionNode('send_sad_morning_time_message', lambda : self.__send_message(message, "что такое случилось с самого утра морда? м,"))
+        elif time.hour > 12 and time.hour < 18:
+            send_time_message = ActionNode('send_sad_day_time_message', lambda : self.__send_message(message, "что случилоооось котенок? на учебе что-то ?"))
+        elif time.hour > 18 and time.hour < 24:
+            send_time_message = not_action
+            
+        last_random_sad_message = [
+            
+                                    """ты моя самая лучшая, самая красивая, самая милая, удивительная, добрая, прекрасная, сексуальная, умная, очаровательная, изящная. ты — буквально воплощение изящества и очарования. твоя прекрасная улыбка каждый раз наполняет меня своей любовью, радостью, нежностью этот прекрасный запах, успокаивающие нежные обьятия с такой любовью!!! обожаю❤️❤️❤️❤️❤️❤️❤️❤️""",
+                                   """
+                                   ты мой самый близкий и прекрасный человек! я очень рад что ты рядом, я безумно тебя люблю и ценю. мне грустно когда у тебя плохое настроение, и поэтому я искренне желаю чтобы у тебя всегда все было нормально/хорошо. помни, твоя улыбка прекрасна!! как и ты сама 
+                                   """,
+                                   """
+                                   я очень сильно дорожу тобой и благодарен что ты присутствуешь в моей жизни, являясь ее огромной частью. честно не представляю что я бы делал без тебя, ты по истине прекрасный человек я верю что у нас все будет хорошо, мы пройдем через многие трудности которые нас ждут/будут ждать. я так же верю что ты тот человек которого я желаю видеть рядом с собой на своем жизненном пути и без которого мне будет/было бы сложно!!!
+                                   """,
+                                   """
+                                   я всегда буду рядом когда нужно, всегда постараюсь позаботиться о тебе и сделать все что в моих силах чтобы моя девочка была счастлива . потому что я очень люблю тебя. ты моя душа и мое солнышко, мой самый дорогой партнер.  ты прекрасна котенок, во всех аспектах. начиная от твоих внутренних переживаний насчет окружающих тебя людей, заканчивая заботой об мне. я ценю все черты твоего характера. ценю всю тебя. пусть ты и бываешь порой строга к себе, к своему телу, к своим поступкам. от себя могу сказать что я все люблю. буквально все. люблю твое прекрасное тело, и я не перестану это напоминать. хочу чтобы моя девочка запомнила это. а то как ты думаешь? мой член случайно встает когда я нахожусь с тобой, а уж тем более если ты оголена. тут как бы без вариантов. не хочу как то встраивать пошлость в мое выражение чувств, но без этого не обойтись. мне нужно создать контраст того что мое тело принадлежит только тебе и возбуждается из-за тебя. а то уж сильно давно я не напоминал что ты являешься моей госпожой и хозяйкой. хочу еще напомнить что только ты создаешь ту атмосферу уюта, спокойствия, что я аж готов уснуть на твоих руках. это дорогого стоит:) я действительно рад этому. очень сильно люблю обниматься с тобой, целовать такую буську как ты и жмакать мои любимые ляшечки!!! 
+                                   """,
+                                   ]
+        
+        last_message = not_action
+        
+        if random.randint(0, 4) == 1 and time.hour > random.randint(16, 19):
+            last_message = ActionNode('last_action_sad', lambda: self.__send_message(message, random.choice(last_random_sad_message)), execute_once=True)
+        
+        self.behaviorTree.update(SequenceNode([condition_node, 
+                                               send_time_message,
+                                               random.choice(send_first_message),
+                                               sleep_duration,
+                                               random.choice(send_sticker),
+                                               last_message
+                                               ]))
+        await self.behaviorTree.run()
     
     async def handle_random_behavior(self, message : Message):
         
@@ -76,7 +149,8 @@ class UserCommandHandler:
         lambda: self.__send_message(message, "ну что ты, кит ты мой?"),
         lambda: self.__send_sticker(message, random.choice(self.stickers))]
         
-        self.behaviorTree.update(SequenceNode([condition_node, ActionNode('handle_random_behavior', random.choice(actions))]))
+        self.behaviorTree.update(SequenceNode([condition_node, 
+                                               ActionNode('handle_random_behavior', random.choice(actions), execute_once=True)]))
         await self.behaviorTree.run()
 
     async def handle_good_night(self, message : Message):
@@ -201,6 +275,17 @@ class UserCommandHandler:
                                                send_second_message, 
                                                sleep_duration, send_third_message, send_sticker]))
         await self.behaviorTree.run()
+        
+    async def hande_forced_response(self, message: Message):
+        positive_keywords = ["да", "все хорошо", "все нормально", "отлично", "конечно"]
+        condition_contains_keywords = ConditionNode('message_contains_keywords', 
+                                                lambda: any(word in message.text.lower() for word in positive_keywords))
+        keyword_answers = ["ууу", "хехе", "уу, хехехехе", "хехехех"]
+        sleep_duration = ActionNode('sleep_duration', lambda: self.__handle_sleep(message.text.__len__()))
+        send_keyword_message = ActionNode('send_keyword_message', lambda: self.__reply(message, random.choice(keyword_answers)))
+        keyword_sequence = SequenceNode([condition_contains_keywords, sleep_duration, send_keyword_message])
+        self.behaviorTree.update(keyword_sequence)
+        await self.behaviorTree.run()
 
     async def handle_photo(self, message: Message):
         condition_node = ConditionNode('message_is_not_none', lambda: message is not None)
@@ -225,5 +310,63 @@ class UserCommandHandler:
         
     async def handle_behavior_tree_context(self, message: Message):
         actions = self.behaviorTree.context.get_completed_actions()
-        print(str(actions))
         
+        if actions:
+            text = "*✅ выполненные действия:*\n\n"
+            for index, (func_id, name) in enumerate(actions, start=1):
+                name = name.replace('_', '\\_').replace('*', '\\*').replace('`', '\\`')
+                text += f"{index}. *id функции:* `{func_id}`\t*название:* {name}\n\n"
+        else:
+            text = "⚠️ *выполненные действия отсутствуют.*"
+
+        await message.answer(text, parse_mode="Markdown")
+        
+    async def handle_help(self, message: Message):
+        if str(message.chat.id) in Config().get_telegram_members():
+            stickers = [
+                'CAACAgIAAxkBAAEIUERm3DooRydEbEto64sdl0UV0AYzSwACyVkAAsSAEUpbQbYgbpD3kDYE',
+                'CAACAgIAAxkBAAEIUEZm3Dowumy385k_SUMGQA5FycrbKwACfVMAAusoGUrMdZ-hSotszjYE',
+                'CAACAgIAAxkBAAEIUEhm3Do2VseNg1QwCD-6SdQhdPbFtgACilMAApwTGEqShO-Z34bWXjYE',
+                'CAACAgIAAxkBAAEIUEpm3Do8a930jrgOkArciCe_SdkTxwAC0lUAAoUUGUrdMauGQGNuMjYE',
+                'CAACAgIAAxkBAAEIUExm3DpATaB1_nmwWOVkkvt1mE9PKwACzVYAAitrEEoYZXRed1LcEzYE',
+                'CAACAgIAAxkBAAEIUE5m3DpH7rPqY-xwGc0I05eVovjQpQAC1lYAApw9EUqsTarNviAZnDYE',
+                'CAACAgIAAxkBAAEIUFBm3DpMQ5wn6XAVoya9p1k6eZkzAAMNXwACx0wQSvIl1WxCVZsPNgQ',
+                'CAACAgIAAxkBAAEIUFJm3DpTzyfOuwYKu9RP15-nnYt4kAACyVQAAtV-EEq6VHw_FMwj9zYE',
+                'CAACAgIAAxkBAAEIUFZm3DpaRfbH1bd7HVYReFCwe72ysgACdFoAAqSWEEq_BPH28wLbEjYE',
+                'CAACAgIAAxkBAAEIUFhm3DpfOPAhjpFf9eJKFpaW05y5rwAC3F8AApsJEUppZ6fPRfuTBDYE'
+            ]
+            text = (
+                "привет, меня зовут гето, и моя главная цель — быть рядом, поддерживать тебя и поднимать твоё настроение в трудные моменты.\n\n"
+                "чтобы начать наше общение, просто нажми на кнопку *старт*. если вдруг что-то пошло не так, не переживай: "
+                "нажми на кнопку *перезагрузка*, и я постараюсь исправить ситуацию после перезапуска.\n\n"
+                "P.S. порой я могу повторяться или немного сбиваться с темы. прошу прощения за это — я только учусь и был создан всего за несколько недель.\n\n"
+                "и помни — я всегда здесь, чтобы поддержать тебя"
+            )
+            await message.answer(text, parse_mode="Markdown")
+            if random.randint(0, 4) == 3:
+                await message.answer_sticker(random.choice(stickers))
+
+    async def send_scheduled_messages(self, bot : Bot):
+        while True:
+            current_time = datetime.now()
+            messages = self.scheduledMessageRepository.get_scheduled_messages_for_sending(current_time)
+            for message in messages:
+                try:
+                    await bot.send_message(message.recipient_id, message.message)
+                    self.scheduledMessageRepository.delete_message_by_id(message.id)
+                except Exception as e:
+                    print(f"не удалось отправить сообщение {message.id}: {e}")
+            await asyncio.sleep(100)
+
+    async def update_context_background(self):
+        while True:
+            try:
+                self.behaviorTree.update_context(BehaviorTreeContext())
+                print(f"Контекст успешно обновлен в {datetime.now()}")
+            except Exception as e:
+                print(f"Не удалось переопределить контекст: {e}")
+            
+            await asyncio.sleep(1000 + (3600 * 1))  # Ожидание между 2 и 3 часами (7200 сек = 2 часа)
+            
+            
+    

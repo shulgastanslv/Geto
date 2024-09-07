@@ -1,22 +1,23 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 main_panel = ReplyKeyboardMarkup(keyboard=[
-        [KeyboardButton(text='Старт')],
-        [KeyboardButton(text='Мне грустно, я хочу тепла')],
-        [KeyboardButton(text='Я очень зла, хочу выговориться')],
-        [KeyboardButton(text='Я хочу поговорить с тобой')],
-        [KeyboardButton(text='Перезагрузить')],
-        [KeyboardButton(text='Кто ты?')]
+        [KeyboardButton(text='старт')],
+        [KeyboardButton(text='мне грустно, я хочу тепла')],
+        [KeyboardButton(text='я очень зла, хочу выговориться')],
+        [KeyboardButton(text='я хочу поговорить с тобой')],
+        [KeyboardButton(text='перезагрузить')],
+        [KeyboardButton(text='помощь')]
     ],
     resize_keyboard=True
 )
 
 admin_panel = ReplyKeyboardMarkup(keyboard=[
-    [KeyboardButton(text='Старт')],
-    [KeyboardButton(text='Запланировать сообщение')],
-    [KeyboardButton(text='Удалить запланированное сообщение')],
-    [KeyboardButton(text='Показать все запланированные сообщения')],
-    [KeyboardButton(text='Кто ты?')],
+    [KeyboardButton(text='старт')],
+    [KeyboardButton(text='запланировать сообщение')],
+    [KeyboardButton(text='удалить запланированное сообщение')],
+    [KeyboardButton(text='показать все запланированные сообщения')],
+    [KeyboardButton(text='показать текущий контекст')],
+    [KeyboardButton(text='помощь')],
     ], 
     resize_keyboard=True
 )

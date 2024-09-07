@@ -61,6 +61,14 @@ class BehaviorTreeContext:
     
     def get_completed_actions(self) -> List[Tuple[int, str]]:
         return self._completed_actions.copy()
+    
+    def remove(self, name: str) -> bool:
+        for action in self._completed_actions:
+            if action[1] == name:
+                self._completed_actions.remove(action)
+                return True
+        return False
+        
 
 class Node(ABC):
     @abstractmethod
@@ -230,6 +238,9 @@ class BehaviorTree:
         self.root = root
         if context is not None:
             self.context = context
+            
+    def update_context(self, context: BehaviorTreeContext) -> None:
+        self.context = context
 
     async def run(self) -> None:
         if self.root is None:

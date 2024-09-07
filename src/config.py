@@ -26,3 +26,6 @@ class Config:
         return (
             f"Config(database={self.database}, "
             f"telegram={{token=***, members={self.telegram.get('members', [])}}})")
+        
+        
+        
