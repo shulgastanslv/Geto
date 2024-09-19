@@ -53,6 +53,58 @@ class UserCommandHandler:
                                                sleep_duration, send_sticker]))
         await self.behaviorTree.run()
         
+    async def angry_handler(self,  message : Message):
+        time = datetime.now()
+        
+        condition_node = ConditionNode('message_is_not_none', lambda: message is not None)
+        sleep_duration = ActionNode('sleep_duration', lambda : self.__handle_sleep(random.randint(1, 5)))
+        
+        first_answers = ["что случилось, злюка ты моя?", 
+                         "не злись мордочка моя, я рядом, помни что я тебя очень сильно люблю!!❤️", 
+                         "ну что ты котик, чего злишься там?",
+                         "что случилось морда? давай поговорим",
+                         "моя ты злюка, был бы я рядом, я бы тебя спокойно обнял и поцеловал, расскажи что случилось котик!!❤️",
+                         "морда ты моя, что случилось?",
+                         "что случилось жопка, ну ка рассказывай давай",
+                         "мой ты котик, что у моего самого прекрасного котика случилось?",
+                         "ну что ты там, чего ты злюкаешься, помни что я тебя очень сильно люблю❤️❤️",
+                         "что случилось котик? давай выслушаю тебя, расскажи мне все то что тебя злит. ты моя душенька"]
+        
+        second_answers = [
+            "помни, что ты моя самая-самая любимая женщина, я очень сильно люблю тебя. никогда не расстраивайся котик, можешь позлиться, отдохнуть, но потом обязательно в строй!",
+            "помни котик, я рядом, ты моя прелестная морда, самая сильная и независимая женщина",
+            "ты бы знала как я тебя люблююю!❤️❤️",
+            "ты ж мой котенок, я тебя очень люблю",
+            "я тебя очень-очень люблю, ты мой пушин, хехехе",
+            "моя ты злюка, белка-люка, помни, я всегда рядом, ты со всем справишься, ты очень сильная!",
+            "помни, я ментально рядом с тобой котик, позлись, отвлекись и давай дальше в бой. я скоро буду орядом и возьму все твои проблемы на себя. я твой мужчина, который всю жизнь будет рядом с тобой!! обещаю!!❤️❤️",
+            "ну ка, белка-злюка, давай там, вдох-выдох, хехехех, люблююю тебя❤️❤️"
+        ]
+        
+        not_action = ActionNode('not_action', lambda: True, execute_once=True)
+        actions_first = ActionNode('send_first_message', lambda : self.__send_message(message, random.choice(first_answers)), execute_once=True)
+        action_second = ActionNode('send_second_message', lambda : self.__send_message(message, random.choice(second_answers)), execute_once=True)
+        
+        send_time_message = not_action
+        
+        if time.hour > 6 and time.hour < 12:
+            send_time_message = ActionNode('send_sad_morning_time_message', lambda : self.__send_message(message, "чего злишься с самого утра котик"))
+        elif time.hour > 12 and time.hour < 18:
+            day_answers = ["что случилоось котик?", "что случилось котик?", "что случилось морда моя", "что случилось моя принцесса?", "что произошло котенок, все хорошо у тебя?"]
+            send_time_message = ActionNode('send_sad_day_time_message', lambda : self.__send_message(message, random.choice(day_answers)))
+        elif time.hour > 18 and time.hour < 24:
+            send_time_message = not_action
+            
+        self.behaviorTree.update(SequenceNode([condition_node, 
+                                               send_time_message,
+                                               actions_first,
+                                               sleep_duration,
+                                               action_second
+                                               ]))
+        await self.behaviorTree.run()
+    
+        
+        
     async def sad_handler(self, message : Message):
         
         time = datetime.now()
@@ -97,16 +149,19 @@ class UserCommandHandler:
             'CAACAgIAAxkBAAEIUIBm3D8D5lVnTRSnn8g82N-siUCfhwACHSgAAvfJKUkETvNifE_DazYE',
             'CAACAgIAAxkBAAEIUIJm3D8HPT0sY9yAavIUJEgOcSdi-AACNB0AAggGKElkgjaID_b3cTYE'
         ]        
-        
-        not_action = ActionNode('not_action', lambda: True)
-        send_first_message = [ActionNode('send_first_message', lambda : self.__send_message(message, random.choice(first_answers))), ActionNode('send_second_message', lambda : self.__send_message(message, random.choice(second_answers)))]
+        local_nicknames = ["котик", "морда", "мелочь", "любовь моя", "котенок"]
+        not_actions_answers = ["ну что ты ", "все еще плохо ", "ну ты ", "еще не полегчало ", "чего грустишь "]
+        not_action_message = random.choice(not_actions_answers) + random.choice(local_nicknames) + " ?"
+        not_action = ActionNode('not_action', lambda: self.__send_message(message, not_action_message))
+        send_first_message = [ActionNode('send_first_message', lambda : self.__send_message(message, random.choice(first_answers)), execute_once=True), ActionNode('send_second_message', lambda : self.__send_message(message, random.choice(second_answers)), execute_once=True)]
         send_sticker = [ActionNode('send_sticker', lambda: self.__send_sticker(message, random.choice(stickers))), not_action]
         send_time_message = not_action
         
         if time.hour > 6 and time.hour < 12:
             send_time_message = ActionNode('send_sad_morning_time_message', lambda : self.__send_message(message, "что такое случилось с самого утра морда? м,"))
         elif time.hour > 12 and time.hour < 18:
-            send_time_message = ActionNode('send_sad_day_time_message', lambda : self.__send_message(message, "что случилоооось котенок? на учебе что-то ?"))
+            day_answers = ["что случилоось котик?", "что произошло котик? все хорошо у тебя там?", "что случилось морда моя", "как ты там, котик?", "что произошло котенок, все хорошо у тебя?"]
+            send_time_message = ActionNode('send_sad_day_time_message', lambda : self.__send_message(message, random.choice(day_answers)))
         elif time.hour > 18 and time.hour < 24:
             send_time_message = not_action
             
@@ -124,9 +179,9 @@ class UserCommandHandler:
                                    """,
                                    ]
         
-        last_message = not_action
+        last_message = ActionNode('last_message_not_action', lambda: True)
         
-        if random.randint(0, 4) == 1 and time.hour > random.randint(16, 19):
+        if random.randint(1, 3) == 1:
             last_message = ActionNode('last_action_sad', lambda: self.__send_message(message, random.choice(last_random_sad_message)), execute_once=True)
         
         self.behaviorTree.update(SequenceNode([condition_node, 
@@ -356,7 +411,7 @@ class UserCommandHandler:
                     self.scheduledMessageRepository.delete_message_by_id(message.id)
                 except Exception as e:
                     print(f"не удалось отправить сообщение {message.id}: {e}")
-            await asyncio.sleep(100)
+            await asyncio.sleep(1000)
 
     async def update_context_background(self):
         while True:
@@ -366,7 +421,7 @@ class UserCommandHandler:
             except Exception as e:
                 print(f"Не удалось переопределить контекст: {e}")
             
-            await asyncio.sleep(1000 + (3600 * 1))  # Ожидание между 2 и 3 часами (7200 сек = 2 часа)
+            await asyncio.sleep(1000 + (3600 * 1))
             
             
     

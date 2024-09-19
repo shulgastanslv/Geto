@@ -22,11 +22,13 @@ from aiogram.fsm.context import FSMContext
 from keyboards import admin_panel, main_panel
 from setup import ServiceCollection
 from states import DeleteMessageStates, ScheduleMessageStates, UserStates
-        
+from aiogram.client.session.aiohttp import AiohttpSession
+
 injector = Injector([ServiceCollection()])
 usersCommandHandler = injector.get(UserCommandHandler)
 scheduledMessageRepository = injector.get(ScheduledMessageRepository)
 config = Config() 
+session = AiohttpSession(proxy='http://proxy.server:3128')
 bot = Bot(config.get_telegram_token(), default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
 
@@ -132,9 +134,9 @@ async def show_all_scheduled_messages(message: Message):
 
 @router.message(CommandStart())
 async def start(message : Message, state: FSMContext):
-    if str(message.chat.id) == Config().get_telegram_members()[0]:
+    if str(message.chat.id) == Config().get_telegram_members()[1]:
         await bot.send_message(message.chat.id, f"привет.", reply_markup=admin_panel)
-    elif str(message.chat.id) == Config().get_telegram_members()[1]:
+    elif str(message.chat.id) == Config().get_telegram_members()[0]:
         hello_answers = ["привет котенок", "ну что ты, мелочь моя", "приветик, котик"]
         first_message = ["ну что ты ?", "как настроение?", "хочешь поговоришь?", "как ты там?", "у тебя все хорошо?", 
                          "о чем хочешь поговорить?"]
@@ -144,7 +146,7 @@ async def start(message : Message, state: FSMContext):
     else:
         await bot.send_message(message.chat.id, f"привет.")
     await state.set_state(UserStates.Start)
-   
+
 @router.message(F.text == 'мне грустно, я хочу тепла')
 async def sad_handler(message: Message, state: FSMContext):
     if str(message.chat.id) == Config().get_telegram_members()[0]:
@@ -153,9 +155,11 @@ async def sad_handler(message: Message, state: FSMContext):
     
 @router.message(F.text == 'я очень зла, хочу выговориться')
 async def angry_handler(message: Message, state: FSMContext):
-    await state.set_state(UserStates.Angry)
+    if str(message.chat.id) == Config().get_telegram_members()[0]:
+        await usersCommandHandler.angry_handler(message)
+        await state.set_state(UserStates.Angry)
    
-@router.message(F.text == 'я хочу поговорить с тобой')
+@router.message(F.text.contains('я хочу поговорить с тобой'))
 async def chat_handler(message: Message, state: FSMContext):
     await state.set_state(UserStates.Chat)
 
