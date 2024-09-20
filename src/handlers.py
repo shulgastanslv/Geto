@@ -148,10 +148,10 @@ class UserCommandHandler:
             'CAACAgIAAxkBAAEIUIJm3D8HPT0sY9yAavIUJEgOcSdi-AACNB0AAggGKElkgjaID_b3cTYE'
         ]        
         local_nicknames = ["котик", "морда моя", "мелочь моя", "котенок"]
-        not_actions_answers = ["ну что ты ", "все еще плохо", "еще не полегчало ", "чего грустишь "]
-        not_action_message = random.choice(not_actions_answers) + random.choice(local_nicknames) + " ?"
-        not_action = ActionNode('not_sad_action', lambda: self.__send_message(message, not_action_message))
-        send_first_message = [ActionNode('send_sad_first_message', lambda : self.__send_message(message, random.choice(first_answers)), execute_once=True), ActionNode('send_second_message', lambda : self.__send_message(message, random.choice(second_answers)), execute_once=True)]
+        not_actions_answers = ["ну что ты ", "чего грустишь ", "не грусти ", "чего грустишь "]
+        not_action_message = random.choice(not_actions_answers) + random.choice(local_nicknames)
+        not_action = ActionNode('not_sad_action', lambda: self.__send_message(message, not_action_message), execute_once=True)
+        send_first_message = [ActionNode('send_sad_first_message', lambda : self.__send_message(message, random.choice(first_answers)), execute_once=True), ActionNode('send_sad_second_message', lambda : self.__send_message(message, random.choice(second_answers)), execute_once=True)]
         send_sticker = [ActionNode('send_sad_sticker', lambda: self.__send_sticker(message, random.choice(stickers))), not_action]
         send_time_message = not_action
         

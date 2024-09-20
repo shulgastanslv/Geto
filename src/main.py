@@ -197,7 +197,6 @@ async def handle_sticker_message(message: Message):
     if str(message.chat.id) in Config().get_telegram_members():
         await usersCommandHandler.handle_sticker_message(message)
 
-
 @router.message(GoodNightFilter())
 async def handle_good_night(message : Message):
     if str(message.chat.id) in Config().get_telegram_members():
