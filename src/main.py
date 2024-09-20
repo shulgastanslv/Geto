@@ -211,7 +211,7 @@ async def handle_how_are_you(message : Message):
     if str(message.chat.id) in Config().get_telegram_members():
         answers = ["все хорошо, котик, а ты как?", "все хорошооо", "все нормально, а ты там как?", "у меня все хорошо, а ты что там?", "все хорошо котик, а ты что там?"]
         await message.reply(random.choice(answers))
-
+        
 @router.message(F.text.contains("что делаешь"))
 async def handle_what_are_you_doing(message : Message):
     if str(message.chat.id) in Config().get_telegram_members():
