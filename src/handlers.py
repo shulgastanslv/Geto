@@ -376,6 +376,9 @@ class UserCommandHandler:
 
         await message.answer(text, parse_mode="Markdown")
         
+    async def handle_talk(self, message: Message):
+        await message.answer("давай поговорим котенок")
+        
     async def handle_help(self, message: Message):
         if str(message.chat.id) in Config().get_telegram_members():
             stickers = [
@@ -421,7 +424,7 @@ class UserCommandHandler:
             except Exception as e:
                 print(f"не удалось переопределить контекст: {e}")
             
-            await asyncio.sleep(random.choice(1200, 1500))
+            await asyncio.sleep(random.randint(1200, 1500))
             
             
     

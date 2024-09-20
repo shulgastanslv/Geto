@@ -161,7 +161,9 @@ async def angry_handler(message: Message, state: FSMContext):
    
 @router.message(F.text.contains('я хочу поговорить с тобой'))
 async def chat_handler(message: Message, state: FSMContext):
-    await state.set_state(UserStates.Chat)
+    if str(message.chat.id) == Config().get_telegram_members()[0]:
+        await usersCommandHandler.handle_talk(message)
+        await state.set_state(UserStates.Chat)
 
 async def restart_bot():
     os.execv(sys.executable, ['python'] + sys.argv)
