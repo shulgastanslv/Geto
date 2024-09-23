@@ -42,13 +42,13 @@ async def handler_help(message : Message):
 
 @router.message(F.text == "запланировать сообщение")
 async def schedule_message_start(message: Message, state: FSMContext):
-    if str(message.chat.id) == Config().get_telegram_members()[0]:
+    if str(message.chat.id) in Config().get_telegram_members():
         await message.answer("✏️ введите *id получателя*:", parse_mode="Markdown")
         await state.set_state(ScheduleMessageStates.waiting_for_recipient_id)
 
 @router.message(ScheduleMessageStates.waiting_for_recipient_id)
 async def enter_recipient_id(message: Message, state: FSMContext):
-    if str(message.chat.id) == Config().get_telegram_members()[0]:
+    if str(message.chat.id) in Config().get_telegram_members():
         recipient_id = message.text
         await state.update_data(recipient_id=recipient_id)
         await message.answer("✏️ теперь введите *текст сообщения*:", parse_mode="Markdown")
@@ -56,7 +56,7 @@ async def enter_recipient_id(message: Message, state: FSMContext):
 
 @router.message(ScheduleMessageStates.waiting_for_message_content)
 async def enter_message_content(message: Message, state: FSMContext):
-    if str(message.chat.id) == Config().get_telegram_members()[0]:
+    if str(message.chat.id) in Config().get_telegram_members():
         message_content = message.text
         await state.update_data(message_content=message_content)
         await message.answer(
@@ -67,7 +67,7 @@ async def enter_message_content(message: Message, state: FSMContext):
 
 @router.message(ScheduleMessageStates.waiting_for_scheduled_time)
 async def enter_scheduled_time(message: Message, state: FSMContext):
-    if str(message.chat.id) == Config().get_telegram_members()[0]:
+    if str(message.chat.id) in Config().get_telegram_members():
         try:
             scheduled_time = datetime.strptime(message.text, "%Y-%m-%d %H:%M:%S")
             user_data = await state.get_data()
@@ -95,7 +95,7 @@ async def enter_scheduled_time(message: Message, state: FSMContext):
 
 @router.message(F.text == "удалить запланированное сообщение")
 async def delete_scheduled_message(message: Message, state: FSMContext):
-    if str(message.chat.id) == Config().get_telegram_members()[0]:
+    if str(message.chat.id) in Config().get_telegram_members():
         await message.answer("✏️ введите *id* сообщения, которое нужно удалить:", parse_mode="Markdown")
         await state.set_state(DeleteMessageStates.waiting_for_message_id)
 
@@ -134,9 +134,9 @@ async def show_all_scheduled_messages(message: Message):
 
 @router.message(CommandStart())
 async def start(message : Message, state: FSMContext):
-    if str(message.chat.id) == Config().get_telegram_members()[1]:
+    if str(message.chat.id) == Config().get_telegram_members()[0]:
         await bot.send_message(message.chat.id, f"привет.", reply_markup=admin_panel)
-    elif str(message.chat.id) == Config().get_telegram_members()[0]:
+    elif str(message.chat.id) == Config().get_telegram_members()[1]:
         hello_answers = ["привет котенок", "ну что ты, мелочь моя", "приветик, котик"]
         first_message = ["ну что ты ?", "как настроение?", "хочешь поговоришь?", "как ты там?", "у тебя все хорошо?", 
                          "о чем хочешь поговорить?"]
@@ -147,24 +147,30 @@ async def start(message : Message, state: FSMContext):
         await bot.send_message(message.chat.id, f"привет.")
     await state.set_state(UserStates.Start)
 
-@router.message(F.text == 'мне грустно, я хочу тепла')
+@router.message(F.text.lower().contains('грустно') | F.text.lower().contains('тепла'))
 async def sad_handler(message: Message, state: FSMContext):
-    if str(message.chat.id) == Config().get_telegram_members()[0]:
+    if str(message.chat.id) in Config().get_telegram_members():
         await usersCommandHandler.sad_handler(message)
         await state.set_state(UserStates.Sad)
     
-@router.message(F.text == 'я очень зла, хочу выговориться')
+@router.message(F.text.lower().contains('зла') | F.text.lower().contains('выговориться'))
 async def angry_handler(message: Message, state: FSMContext):
-    if str(message.chat.id) == Config().get_telegram_members()[0]:
+    if str(message.chat.id) in Config().get_telegram_members():
         await usersCommandHandler.angry_handler(message)
         await state.set_state(UserStates.Angry)
    
-@router.message(F.text.contains('я хочу поговорить с тобой'))
+@router.message(F.text.lower().contains('хочу поговорить') | F.text.lower().contains('с тобой'))
 async def chat_handler(message: Message, state: FSMContext):
-    if str(message.chat.id) == Config().get_telegram_members()[0]:
+    if str(message.chat.id) in Config().get_telegram_members():
         await usersCommandHandler.handle_talk(message)
         await state.set_state(UserStates.Chat)
 
+@router.message(F.text.contains('обновить'))
+async def chat_handler(message: Message):
+    if str(message.chat.id) in Config().get_telegram_members():
+        await usersCommandHandler.reset_context()
+        await bot.send_message(message.chat.id, "контекст обновлен ⚠️")
+        
 async def restart_bot():
     os.execv(sys.executable, ['python'] + sys.argv)
     

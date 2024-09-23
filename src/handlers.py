@@ -376,8 +376,29 @@ class UserCommandHandler:
 
         await message.answer(text, parse_mode="Markdown")
         
+    async def reset_context(self):
+        self.behaviorTree.update_context(BehaviorTreeContext())
+        print(f"контекст успешно обновлен в {datetime.now()}")
+    
     async def handle_talk(self, message: Message):
-        await message.answer("давай поговорим котенок")
+        condition_node = ConditionNode('handle_talk_message_is_not_none', lambda: message is not None)
+        
+        first_answers = ["ну что ты котик", "как ты там, котенок", "мелочь ты моя"]
+        second_answers = ["хочешь поговорить?", "давай поговорим", "хехех, хочешь поболтать?"]
+        third_answers = ["пока что мы не можем поболтать много, но ты рассказывай обязательно все что пожелаешь, я тебя выслушаю", 
+                         "хехехе", "ууу, хехехех"]
+        
+        send_first_message = ActionNode('send_talk_first_message', lambda : self.__send_message(message, random.choice(first_answers)), execute_once=True)
+        send_second_message =  ActionNode('send_talk_second_message', lambda : self.__send_message(message, random.choice(second_answers)), execute_once=True)
+        send_third_message =  ActionNode('send_talk_third_message', lambda : self.__send_message(message, random.choice(third_answers)), execute_once=True)
+        sleep_duration = ActionNode('sleep_talk_duration', lambda : self.__handle_sleep(message.voice.duration))
+        send_sticker = ActionNode('send_talk_sticker', lambda : self.__send_sticker(message, random.choice(self.stickers)))
+        actions = [
+        condition_node, 
+        random.choice([send_first_message, sleep_duration, send_second_message, sleep_duration, send_third_message, send_sticker])
+        ]
+        self.behaviorTree.update(SequenceNode(actions))
+        await self.behaviorTree.run()
         
     async def handle_help(self, message: Message):
         if str(message.chat.id) in Config().get_telegram_members():
@@ -419,8 +440,7 @@ class UserCommandHandler:
     async def update_context_background(self):
         while True:
             try:
-                self.behaviorTree.update_context(BehaviorTreeContext())
-                print(f"контекст успешно обновлен в {datetime.now()}")
+                await self.reset_context()
             except Exception as e:
                 print(f"не удалось переопределить контекст: {e}")
             
