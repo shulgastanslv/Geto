@@ -14,6 +14,8 @@ main_panel = ReplyKeyboardMarkup(keyboard=[
 
 admin_panel = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='старт')],
+    [KeyboardButton(text='получить время')],
+    [KeyboardButton(text='получить список пользователей')],
     [KeyboardButton(text='запланировать сообщение')],
     [KeyboardButton(text='удалить запланированное сообщение')],
     [KeyboardButton(text='показать все запланированные сообщения')],

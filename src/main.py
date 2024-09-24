@@ -166,10 +166,24 @@ async def chat_handler(message: Message, state: FSMContext):
         await state.set_state(UserStates.Chat)
 
 @router.message(F.text.contains('обновить'))
-async def chat_handler(message: Message):
+async def update(message: Message):
     if str(message.chat.id) in Config().get_telegram_members():
         await usersCommandHandler.reset_context()
         await bot.send_message(message.chat.id, "контекст обновлен ⚠️")
+        
+@router.message(F.text.contains('получить время'))
+async def update_time(message: Message):
+    if str(message.chat.id) in Config().get_telegram_members():
+        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        await bot.send_message(message.chat.id, f"```\nТекущее время: {current_time}\n```", parse_mode="Markdown")
+        
+@router.message(F.text.contains('получить список пользователей'))
+async def update_users(message: Message):
+    if str(message.chat.id) in Config().get_telegram_members():
+        users = Config().get_users_list()
+        users_text = "\n".join(users)
+        await bot.send_message(message.chat.id, f"```\nСписок пользователей:\n{users_text}\n```", parse_mode="Markdown")
+        
         
 async def restart_bot():
     os.execv(sys.executable, ['python'] + sys.argv)
