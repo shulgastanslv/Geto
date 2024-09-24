@@ -175,12 +175,12 @@ async def update(message: Message):
 async def update_time(message: Message):
     if str(message.chat.id) in Config().get_telegram_members():
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        await bot.send_message(message.chat.id, f"```\nТекущее время: {current_time}\n```", parse_mode="Markdown")
+        await bot.send_message(message.chat.id, f"{current_time}", parse_mode="Markdown")
         
 @router.message(F.text.contains('получить список пользователей'))
 async def update_users(message: Message):
     if str(message.chat.id) in Config().get_telegram_members():
-        users = Config().get_users_list()
+        users = Config().get_telegram_members()
         users_text = "\n".join(users)
         await bot.send_message(message.chat.id, f"```\nСписок пользователей:\n{users_text}\n```", parse_mode="Markdown")
         
