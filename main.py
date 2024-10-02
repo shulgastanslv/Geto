@@ -257,8 +257,25 @@ async def handle_random_message(message : Message):
             await usersCommandHandler.hande_forced_response(message)
         await usersCommandHandler.handle_random_behavior(message)
 
+from aiohttp import web
+
+async def handle(request):
+    return web.Response(text="Hello from the web server!")
+
+async def start_web_server():
+    app = web.Application()
+    app.router.add_get('/', handle)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', 8080)  # Запуск на 0.0.0.0:8080
+    await site.start()
+    print("Web server started on http://0.0.0.0:8080")
+    while True:
+        await asyncio.sleep(3600)
+
 
 async def main() -> None:
+    asyncio.create_task(start_web_server())
     asyncio.create_task(usersCommandHandler.send_scheduled_messages(bot))
     asyncio.create_task(usersCommandHandler.update_context_background())
     dp.include_router(router)
