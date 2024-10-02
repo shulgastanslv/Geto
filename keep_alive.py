@@ -8,7 +8,7 @@ def index():
     return "Bot is alive"
 
 def run():
-    app.run(host="0.0.0.0", port=8080)
+    app.run(host="https://geto.onrender.com/", port=8080)
     
 
 def keep_alive():  
