@@ -26,7 +26,7 @@ class UserCommandHandler:
         self.nicknames = ["солнышко", "котенок", "буська", "котик", "жопка", "госпожа", "вредина", "прекрасная морда", "дорогая", "милая", "самая лучшая женщина в мире", 
                     "солнце", "котеночек", "пупс"]
         self.first_message_questions = ["хочешь поговорить, ", "ну что ты, ", "как ты там, ", "я тут, ", "скучаешь там, ", "ну чтоо ты, "]
-        self.sticker_loader = StickerLoader('src/stickers.txt')
+        self.sticker_loader = StickerLoader('stickers.txt')
         self.stickers = self.sticker_loader._load_stickers()
         
     def __handle_sleep(self, time_sleep) -> bool:
