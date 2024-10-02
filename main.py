@@ -267,9 +267,9 @@ async def start_web_server():
     app.router.add_get('/', handle)
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', 8080)  # Запуск на 0.0.0.0:8080
+    site = web.TCPSite(runner, 'localhost', 8080)  # Запуск на 0.0.0.0:8080
     await site.start()
-    print("Web server started on http://0.0.0.0:8080")
+    print("Web server started on http://localhost:8080")
     while True:
         await asyncio.sleep(3600)
 
@@ -279,7 +279,7 @@ async def main() -> None:
     asyncio.create_task(usersCommandHandler.send_scheduled_messages(bot))
     asyncio.create_task(usersCommandHandler.update_context_background())
     dp.include_router(router)
-    await dp.start_polling(bot)
+    await dp.start_polling(bot, polling_timeout=20)
 
 
 if __name__ == '__main__':
